@@ -21,12 +21,18 @@ ultrasound = Ultrasound(us_trig_pin, us_echo_pin)  # set up ultrasound
 
 command = "LOCK"
 door_status = "OPEN"
-distance = ultrasound.get_distance()
+lock_status = "LOCKED"
+
 
 def LCDclearprint(msg):
     myLCD.clearScreen()
     myLCD.print(msg)
     return
+
+
+def update_screen_status(door_stat, lock_stat):
+    msg = "Door: +" + door_stat + "\nLock: +" + lock_stat
+    LCDclearprint(msg)
 
 
 def change_door(cmd, door_stat):
@@ -50,6 +56,7 @@ def change_door(cmd, door_stat):
     print("Door is " + lock_status)
     LCDclearprint("Door: " + lock_status)
     return lock_status
+
 
 # myLCD.display() #turn on display
 # time.sleep(1)
