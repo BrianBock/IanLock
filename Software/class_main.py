@@ -36,6 +36,10 @@ class ApplePi:
         self.lock_status = "UNLOCKED"
         self.door_status = "UNKNOWN"
         self.update_door_status()
+        self.last_nearby = None
+        self.nearby = True
+        self.scan = True
+        self.can_sleep = False
 
     def update_door_status(self):
         reed_switch = GPIO.input(self.door_switch_pin)
@@ -52,43 +56,59 @@ class ApplePi:
         msg = "Door: +" + self.door_status + "\nLock: +" + self.lock_status
         self.LCDclearprint(msg)
 
-    # def change_door(self, cmd):
-    #     if self.door_status is "OPEN" and cmd is "LOCK":
-    #         print("Door is open. You cannot lock an open door. Please close the door and try again.")
-    #         self.lock_status = "UNLOCKED"
-    #         return
-    #
-    #     if cmd is "LOCK":
-    #         print("Locking the door...")
-    #         self.motor.rotate(self.motor.cw, 360)
-    #         print("Door is locked")
-    #         self.lock_status = "LOCKED"
-    #
-    #     elif cmd is "UNLOCK":
-    #         print("Unlocking the door...")
-    #         self.motor.rotate(self.motor.ccw, 360)
-    #         print("Door is unlocked")
-    #         self.lock_status = "UNLOCKED"
-    #
-    #     print("Door is " + self.lock_status)
-    #     self.LCDclearprint("Door: " + self.lock_status)
     def lock(self):
         """Lock the door"""
         if self.door_status is "OPEN":
             print("Door is open. You cannot lock an open door. Please close the door and try again.")
             self.lock_status = "UNLOCKED"
-            return
-        self.motor.rotate(self.motor.ccw, 360)
-        print("Door is locked")
-        self.lock_status = "LOCKED"
-        self.update_screen_status()
+        if self.lock_status is "UNLOCKED":
+            self.motor.rotate(self.motor.ccw, 360)
+            print("Door is locked")
+            self.lock_status = "LOCKED"
+            self.update_screen_status()
+        else:
+            print("The door is already locked")
 
     def unlock(self):
         """Unlock the door"""
-        self.motor.rotate(self.motor.cw, 360)
-        print("Door is unlocked")
-        self.lock_status = "UNLOCKED"
+        if self.lock_status is "LOCKED":
+            self.motor.rotate(self.motor.cw, 360)
+            print("Door is unlocked")
+            self.lock_status = "UNLOCKED"
+            self.update_screen_status()
+        else:
+            print("The door is already unlocked")
+
+    def sleep(self):
+        """Turn off the display"""
+        self.LCDclearprint("Goodbye")
+        time.sleep(1)
+        self.LCD.noDisplay()
+
+    def wakeup(self):
+        """Turn on the display"""
+        self.LCD.display()
+        self.LCD.setFastBacklight(255, 255, 255)
+        self.LCDclearprint("Hello!")
+        time.sleep(.5)
         self.update_screen_status()
+
+    def check_nearby(self):
+        """Determine if someone is nearby (closer than a threshold)"""
+        max_dist = 20  # cm
+        dist = self.ultrasound.get_distance()
+        self.nearby = (dist < max_dist)
+        if self.nearby:
+            self.last_nearby = time.time()
+
+    def keep_checking_nearby(self):
+        """Call "check_nearby' all the time. If not nearby for at least timeout, go to sleep"""
+        timeout = 20  # seconds
+        while self.scan:
+            self.check_nearby()
+            time.sleep(.1)
+            if not self.nearby and self.last_nearby - time.time() > timeout:
+                self.sleep()
 
 # myLCD.display() #turn on display
 # time.sleep(1)
