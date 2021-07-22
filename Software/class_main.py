@@ -3,8 +3,9 @@ import qwiic_keypad
 import time
 from motor import StepperMotor
 from ultrasound import Ultrasound
-import sys
+# import sys
 import RPi.GPIO as GPIO
+import threading
 
 
 class ApplePi:
@@ -42,17 +43,18 @@ class ApplePi:
         self.can_sleep = False
 
     def update_door_status(self):
+        """Queries door switch to see if door is open or closed"""
         reed_switch = GPIO.input(self.door_switch_pin)
         door_switch = {0: "OPEN", 1: "CLOSED"}
         self.door_status = door_switch[reed_switch]
-        return
 
     def LCDclearprint(self, msg):
+        """Clear the LCD and print the message to the screen"""
         self.LCD.clearScreen()
         self.LCD.print(msg)
-        return
 
     def update_screen_status(self):
+        """Update the information on screen to reflect the current door and lock status"""
         msg = "Door: +" + self.door_status + "\nLock: +" + self.lock_status
         self.LCDclearprint(msg)
 
@@ -109,6 +111,10 @@ class ApplePi:
             time.sleep(.1)
             if not self.nearby and self.last_nearby - time.time() > timeout:
                 self.sleep()
+
+    def thread_nearby(self):
+        self.montior_thread = threading.Thread(target=keep_checking_nearby)
+        self.monitor_thread.start()
 
 # myLCD.display() #turn on display
 # time.sleep(1)
